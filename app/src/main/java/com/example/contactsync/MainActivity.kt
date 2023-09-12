@@ -136,7 +136,7 @@ class MainActivity : AppCompatActivity() {
 
 
         if(hasActivityPermission()){
-            getContacts()
+
         }
         else{
             requestActivityPermission()

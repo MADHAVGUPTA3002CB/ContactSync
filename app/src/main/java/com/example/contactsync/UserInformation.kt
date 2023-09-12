@@ -49,11 +49,13 @@ class UserInformation : AppCompatActivity() {
     private lateinit var bitmap: Bitmap
 
     var userId : String = ""
+    var x = 0
 
     private lateinit var imageBitmap : Bitmap
     private lateinit var sharedPreferences : SharedPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
 
         binding = ActivityUserInformationBinding.inflate(layoutInflater)
@@ -82,14 +84,14 @@ class UserInformation : AppCompatActivity() {
         firestore = FirebaseFirestore.getInstance()
         auth = FirebaseAuth.getInstance()
 
-        firestore.collection("User").document(auth.currentUser?.uid.toString()).get().addOnSuccessListener { documentSnapshot ->
+        firestore.collection("Users").document(auth.currentUser!!.uid).get().addOnSuccessListener { documentSnapshot ->
             if (documentSnapshot.exists()) {
                 val value = documentSnapshot.toObject(UserData::class.java)
                 Picasso.get().load(value!!.image).into(binding.imgProf)
                 binding.etNm.setText(value.username)
                 binding.etMail.setText(value.email)
                 binding.tvDOB.text = value.age
-                binding.etPhone.setText(value.phone)
+                binding.etPhone.setText(value.phone.toString())
 
             }
         }
@@ -106,7 +108,12 @@ class UserInformation : AppCompatActivity() {
 
         binding.btnSave.setOnClickListener {
             if (!checkallfields()) {return@setOnClickListener}
-            addImagetoFB(imageBitmap)
+
+            if(x==0){
+                addImagetoFB(null , x)
+            }else {
+                addImagetoFB(imageBitmap, x)
+            }
 
 
 
@@ -207,6 +214,7 @@ class UserInformation : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
+        x= 1
         if (resultCode == Activity.RESULT_OK) {
             when (requestCode) {
                 1 -> {
@@ -226,24 +234,43 @@ class UserInformation : AppCompatActivity() {
             }
         }
     }
-    private fun addImagetoFB(imageBitmap: Bitmap?) {
-        val baos = ByteArrayOutputStream()
-        imageBitmap?.compress(Bitmap.CompressFormat.JPEG, 100, baos)
-        val data = baos.toByteArray()
-        bitmap = imageBitmap!!
+    private fun addImagetoFB(imageBitmap: Bitmap? , x : Int) {
 
-        val storagePath = storageRef.child("Photos/${auth.currentUser!!.uid}.jpg")
-        val uploadTask = storagePath.putBytes(data)
+        if(x == 0){
+            val hashMap = hashMapOf<Any, Any>("userId" to userId,
+                "username" to binding.etNm.text.toString(), "email" to binding.etMail.text.toString(),
+                "phone" to binding.etPhone.text.toString().toLong(),"age" to binding.tvDOB.text.toString())
 
-        uploadTask.addOnSuccessListener { it ->
-            val task = it.metadata?.reference?.downloadUrl
-            task?.addOnSuccessListener {
-                uri = it
-                addDataToFirebase(uri)
+            firestore.collection("Users").document(userId).set(hashMap).addOnCompleteListener {
+                if (it.isSuccessful){
+                    val intent = Intent(this, MainActivity::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK //clear call stack
+                    startActivity(intent)
+                    finish()
+                }
             }
-            Toast.makeText(this, "Image uploaded successfully!", Toast.LENGTH_SHORT).show()
-        }.addOnFailureListener {
-            Toast.makeText(this, "Failed to upload image!", Toast.LENGTH_SHORT).show()
+        }
+        else {
+
+
+            val baos = ByteArrayOutputStream()
+            imageBitmap?.compress(Bitmap.CompressFormat.JPEG, 100, baos)
+            val data = baos.toByteArray()
+            bitmap = imageBitmap!!
+
+            val storagePath = storageRef.child("Photos/${auth.currentUser!!.uid}.jpg")
+            val uploadTask = storagePath.putBytes(data)
+
+            uploadTask.addOnSuccessListener { it ->
+                val task = it.metadata?.reference?.downloadUrl
+                task?.addOnSuccessListener {
+                    uri = it
+                    addDataToFirebase(uri)
+                }
+                Toast.makeText(this, "Image uploaded successfully!", Toast.LENGTH_SHORT).show()
+            }.addOnFailureListener {
+                Toast.makeText(this, "Failed to upload image!", Toast.LENGTH_SHORT).show()
+            }
         }
     }
     private fun addDataToFirebase(uri: Uri?) {
@@ -256,7 +283,9 @@ class UserInformation : AppCompatActivity() {
 
         firestore.collection("Users").document(userId).set(hashMap).addOnCompleteListener {
             if (it.isSuccessful){
-                startActivity(Intent(this@UserInformation , MainActivity::class.java))
+                val intent = Intent(this, MainActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK //clear call stack
+                startActivity(intent)
                 finish()
             }
         }

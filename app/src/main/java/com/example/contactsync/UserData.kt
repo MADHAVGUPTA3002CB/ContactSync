@@ -6,6 +6,6 @@ data class UserData(
     var userId:String? = null,
     var username:String? = null,
     var email:String? = null,
-    var phone:String? = null,
+    var phone:Long? = null,
     var age :String? = null
 )

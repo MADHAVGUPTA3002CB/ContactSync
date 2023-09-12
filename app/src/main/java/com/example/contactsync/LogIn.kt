@@ -92,7 +92,7 @@ class LogIn : AppCompatActivity() {
 
                     val user = task.result?.user
                     startActivity(Intent(this,MainActivity::class.java))
-                    finish()
+
                 } else {
 
                     if (task.exception is FirebaseAuthInvalidCredentialsException) {
